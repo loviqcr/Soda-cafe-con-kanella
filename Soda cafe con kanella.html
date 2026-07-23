@@ -1,3 +1,9 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mi Libreta — Soda Café con Kanella</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap');
 
@@ -16,6 +22,8 @@
 
 *{box-sizing:border-box;}
 
+html,body{background:var(--bg);margin:0;padding:0;height:100%;}
+
 .ldg-root{
   background:var(--bg);
   color:var(--text);
@@ -29,6 +37,7 @@
 .ldg-header{
   text-align:center;
   margin-bottom:22px;
+  position:relative;
 }
 .ldg-header .eyebrow{
   font-family:'IBM Plex Mono',monospace;
@@ -44,6 +53,20 @@
   font-size:26px;
   margin:0;
 }
+.ldg-logout{
+  position:absolute;
+  right:0;
+  top:0;
+  background:transparent;
+  border:1px solid var(--border);
+  color:var(--text-muted);
+  border-radius:20px;
+  padding:6px 12px;
+  font-size:11.5px;
+  font-family:'Inter',sans-serif;
+  cursor:pointer;
+}
+.ldg-logout:hover{color:var(--negative);border-color:var(--negative);}
 
 .ldg-total{
   background:var(--surface);
@@ -271,84 +294,151 @@
 }
 
 .ldg-loading{text-align:center;color:var(--text-muted);padding:40px;font-family:'IBM Plex Mono',monospace;font-size:13px;}
-</style>
 
-<div class="ldg-root" id="root">
-  <div class="ldg-loading">Cargando tu libreta…</div>
+.ldg-login{
+  max-width:340px;
+  margin:0 auto;
+  padding-top:80px;
+}
+.ldg-login .ldg-header{margin-bottom:28px;}
+.ldg-login-panel{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:22px;
+}
+.ldg-login-error{
+  color:var(--negative);
+  font-size:12.5px;
+  margin-bottom:12px;
+  font-family:'IBM Plex Mono',monospace;
+  display:none;
+}
+.ldg-login-error.show{display:block;}
+.ldg-login-btn{
+  width:100%;
+  background:var(--efectivo);
+  color:#1a1400;
+  border:none;
+  border-radius:10px;
+  padding:13px;
+  font-weight:600;
+  font-size:14.5px;
+  cursor:pointer;
+  margin-top:6px;
+}
+.ldg-login-btn:disabled{opacity:.6;cursor:default;}
+</style>
+</head>
+<body>
+<div id="root">
+  <div class="ldg-loading">Cargando…</div>
 </div>
 
-<script>
-(function(){
-  const root = document.getElementById('root');
-  let tx = [];
-  let loaded = false;
-  let panelOpen = false;
-  let formTipo = 'ingreso';
-  let formMetodo = 'sinpe';
-  let filterTab = 'todo';
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import {
+  getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+import {
+  getFirestore, doc, getDoc, setDoc
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
-  const fmt = (n) => '₡' + Number(n).toLocaleString('es-CR', {maximumFractionDigits:0});
-  const today = () => new Date().toISOString().slice(0,10);
+const firebaseConfig = {
+  apiKey: "AIzaSyDI08uRnZsGsh7u_-6OOWJbUUgVJQPput0",
+  authDomain: "soda-cafe-kanella.firebaseapp.com",
+  projectId: "soda-cafe-kanella",
+  storageBucket: "soda-cafe-kanella.firebasestorage.app",
+  messagingSenderId: "361868368683",
+  appId: "1:361868368683:web:2d5136aba0cd3b9bc6436e"
+};
 
-  async function load(){
-    try{
-      const res = await window.storage.get('transacciones', false);
-      tx = res && res.value ? JSON.parse(res.value) : [];
-    }catch(e){
-      tx = [];
-    }
-    loaded = true;
-    render();
+const USER_DOMAIN = "sodakanella.local";
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+const root = document.getElementById('root');
+let tx = [];
+let loaded = false;
+let panelOpen = false;
+let formTipo = 'ingreso';
+let formMetodo = 'sinpe';
+let filterTab = 'todo';
+let currentUid = null;
+
+const fmt = (n) => '₡' + Number(n).toLocaleString('es-CR', {maximumFractionDigits:0});
+const today = () => new Date().toISOString().slice(0,10);
+
+function escapeHtml(s){
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+async function load(uid){
+  try{
+    const snap = await getDoc(doc(db, 'usuarios', uid));
+    tx = snap.exists() && Array.isArray(snap.data().transacciones) ? snap.data().transacciones : [];
+  }catch(e){
+    tx = [];
   }
+  loaded = true;
+  render();
+}
 
-  async function save(){
-    try{
-      await window.storage.set('transacciones', JSON.stringify(tx), false);
-    }catch(e){
-      console.error('No se pudo guardar', e);
-    }
+async function save(){
+  if(!currentUid) return;
+  try{
+    await setDoc(doc(db, 'usuarios', currentUid), { transacciones: tx }, { merge: true });
+  }catch(e){
+    console.error('No se pudo guardar', e);
   }
+}
 
-  function balances(){
-    let sinpe=0, efectivo=0;
-    tx.forEach(t=>{
-      const sign = t.tipo==='ingreso' ? 1 : -1;
-      if(t.metodo==='sinpe') sinpe += sign*t.monto;
-      else efectivo += sign*t.monto;
-    });
-    return {sinpe, efectivo, total: sinpe+efectivo};
+function balances(){
+  let sinpe=0, efectivo=0;
+  tx.forEach(t=>{
+    const sign = t.tipo==='ingreso' ? 1 : -1;
+    if(t.metodo==='sinpe') sinpe += sign*t.monto;
+    else efectivo += sign*t.monto;
+  });
+  return {sinpe, efectivo, total: sinpe+efectivo};
+}
+
+function addTx(monto, nota){
+  tx.unshift({
+    id: Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+    tipo: formTipo,
+    metodo: formMetodo,
+    monto: monto,
+    nota: nota || (formTipo==='ingreso' ? 'Ingreso' : 'Pago'),
+    fecha: today()
+  });
+  save();
+  panelOpen = false;
+  render();
+}
+
+function delTx(id){
+  tx = tx.filter(t=>t.id!==id);
+  save();
+  render();
+}
+
+function render(){
+  if(!loaded){
+    root.innerHTML = '<div class="ldg-loading">Cargando tu libreta…</div>';
+    return;
   }
+  const b = balances();
+  const list = tx.filter(t => filterTab==='todo' ? true : t.metodo===filterTab);
 
-  function addTx(monto, nota){
-    tx.unshift({
-      id: Date.now().toString(36)+Math.random().toString(36).slice(2,6),
-      tipo: formTipo,
-      metodo: formMetodo,
-      monto: monto,
-      nota: nota || (formTipo==='ingreso' ? 'Ingreso' : 'Pago'),
-      fecha: today()
-    });
-    save();
-    panelOpen = false;
-    render();
-  }
-
-  function delTx(id){
-    tx = tx.filter(t=>t.id!==id);
-    save();
-    render();
-  }
-
-  function render(){
-    if(!loaded){
-      root.innerHTML = '<div class="ldg-loading">Cargando tu libreta…</div>';
-      return;
-    }
-    const b = balances();
-    const list = tx.filter(t => filterTab==='todo' ? true : t.metodo===filterTab);
-
-    root.innerHTML = `
+  root.innerHTML = `
+    <div class="ldg-root">
       <div class="ldg-header">
+        <button class="ldg-logout" id="logoutBtn">Salir</button>
         <div class="eyebrow">Mi Libreta</div>
         <h1>Control de dinero</h1>
       </div>
@@ -414,45 +504,97 @@
           </div>
         `).join('')}
       </div>
-    `;
+    </div>
+  `;
 
-    document.getElementById('toggleBtn').onclick = ()=>{ panelOpen = !panelOpen; render(); };
+  document.getElementById('logoutBtn').onclick = ()=> signOut(auth);
+  document.getElementById('toggleBtn').onclick = ()=>{ panelOpen = !panelOpen; render(); };
 
-    if(panelOpen){
-      root.querySelectorAll('[data-tipo]').forEach(btn=>{
-        btn.onclick = ()=>{ formTipo = btn.dataset.tipo; render(); };
-      });
-      root.querySelectorAll('[data-metodo]').forEach(btn=>{
-        btn.onclick = ()=>{ formMetodo = btn.dataset.metodo; render(); };
-      });
-      document.getElementById('saveBtn').onclick = ()=>{
-        const montoEl = document.getElementById('montoInput');
-        const notaEl = document.getElementById('notaInput');
-        const monto = parseFloat(montoEl.value);
-        if(!monto || monto<=0){
-          montoEl.focus();
-          montoEl.style.outline = '2px solid var(--negative)';
-          return;
-        }
-        addTx(monto, notaEl.value.trim());
-      };
+  if(panelOpen){
+    root.querySelectorAll('[data-tipo]').forEach(btn=>{
+      btn.onclick = ()=>{ formTipo = btn.dataset.tipo; render(); };
+    });
+    root.querySelectorAll('[data-metodo]').forEach(btn=>{
+      btn.onclick = ()=>{ formMetodo = btn.dataset.metodo; render(); };
+    });
+    document.getElementById('saveBtn').onclick = ()=>{
+      const montoEl = document.getElementById('montoInput');
+      const notaEl = document.getElementById('notaInput');
+      const monto = parseFloat(montoEl.value);
+      if(!monto || monto<=0){
+        montoEl.focus();
+        montoEl.style.outline = '2px solid var(--negative)';
+        return;
+      }
+      addTx(monto, notaEl.value.trim());
+    };
+  }
+
+  root.querySelectorAll('[data-tab]').forEach(btn=>{
+    btn.onclick = ()=>{ filterTab = btn.dataset.tab; render(); };
+  });
+
+  root.querySelectorAll('[data-del]').forEach(btn=>{
+    btn.onclick = ()=> delTx(btn.dataset.del);
+  });
+}
+
+function renderLogin(errorMsg){
+  root.innerHTML = `
+    <div class="ldg-root ldg-login">
+      <div class="ldg-header">
+        <div class="eyebrow">Mi Libreta</div>
+        <h1>Iniciar sesión</h1>
+      </div>
+      <div class="ldg-login-panel">
+        <div class="ldg-login-error ${errorMsg?'show':''}">${errorMsg ? escapeHtml(errorMsg) : ''}</div>
+        <div class="ldg-field">
+          <label>Usuario</label>
+          <input type="text" id="userInput" autocomplete="username" placeholder="jchaves">
+        </div>
+        <div class="ldg-field">
+          <label>Contraseña</label>
+          <input type="password" id="passInput" autocomplete="current-password" placeholder="••••••••">
+        </div>
+        <button class="ldg-login-btn" id="loginBtn">Entrar</button>
+      </div>
+    </div>
+  `;
+
+  const userInput = document.getElementById('userInput');
+  const passInput = document.getElementById('passInput');
+  const loginBtn = document.getElementById('loginBtn');
+
+  async function doLogin(){
+    const username = userInput.value.trim().toLowerCase();
+    const password = passInput.value;
+    if(!username || !password) return;
+    loginBtn.disabled = true;
+    loginBtn.textContent = 'Entrando…';
+    try{
+      await signInWithEmailAndPassword(auth, `${username}@${USER_DOMAIN}`, password);
+    }catch(e){
+      renderLogin('Usuario o contraseña incorrectos.');
     }
-
-    root.querySelectorAll('[data-tab]').forEach(btn=>{
-      btn.onclick = ()=>{ filterTab = btn.dataset.tab; render(); };
-    });
-
-    root.querySelectorAll('[data-del]').forEach(btn=>{
-      btn.onclick = ()=> delTx(btn.dataset.del);
-    });
   }
 
-  function escapeHtml(s){
-    const d = document.createElement('div');
-    d.textContent = s;
-    return d.innerHTML;
-  }
+  loginBtn.onclick = doLogin;
+  passInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') doLogin(); });
+}
 
-  load();
-})();
+onAuthStateChanged(auth, (user)=>{
+  if(user){
+    currentUid = user.uid;
+    tx = [];
+    loaded = false;
+    load(user.uid);
+  }else{
+    currentUid = null;
+    tx = [];
+    loaded = false;
+    renderLogin();
+  }
+});
 </script>
+</body>
+</html>
