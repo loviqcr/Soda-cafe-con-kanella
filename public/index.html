@@ -613,7 +613,7 @@ function render(){
             </div>
             <div class="right">
               <div class="amount ${t.tipo==='ingreso'?'pos':'neg'}">${t.tipo==='ingreso'?'+':'−'}${fmt(t.monto)}</div>
-              <button class="del" data-del="${t.id}" title="Eliminar">✕</button>
+              ${currentUid===ADMIN_UID ? `<button class="del" data-del="${t.id}" title="Eliminar">✕</button>` : ''}
             </div>
           </div>
         `).join('')}
@@ -667,7 +667,11 @@ function render(){
   });
 
   root.querySelectorAll('[data-del]').forEach(btn=>{
-    btn.onclick = ()=> delTx(btn.dataset.del);
+    btn.onclick = ()=>{
+      if(confirm('¿Seguro que querés eliminar este movimiento?')){
+        delTx(btn.dataset.del);
+      }
+    };
   });
 }
 
