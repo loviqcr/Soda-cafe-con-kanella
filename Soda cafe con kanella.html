@@ -366,7 +366,7 @@ import {
   getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 import {
-  getFirestore, doc, getDoc, setDoc
+  getFirestore, doc, onSnapshot, setDoc
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -384,6 +384,7 @@ const ADMIN_UID = "nJR8brlKSIgWvdPO8gkA56zIxSp2";
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const libretaRef = doc(db, 'libreta', 'principal');
 
 const root = document.getElementById('root');
 let tx = [];
@@ -395,6 +396,7 @@ let formTipo = 'ingreso';
 let formMetodo = 'sinpe';
 let filterTab = 'todo';
 let currentUid = null;
+let unsubscribe = null;
 
 async function createUser(username, password){
   const secondaryApp = initializeApp(firebaseConfig, 'admin-create-user-' + Date.now());
@@ -425,21 +427,26 @@ function escapeHtml(s){
   return d.innerHTML;
 }
 
-async function load(uid){
-  try{
-    const snap = await getDoc(doc(db, 'usuarios', uid));
-    tx = snap.exists() && Array.isArray(snap.data().transacciones) ? snap.data().transacciones : [];
-  }catch(e){
-    tx = [];
-  }
-  loaded = true;
+function startListening(){
+  tx = [];
+  loaded = false;
   render();
+  unsubscribe = onSnapshot(libretaRef, (snap)=>{
+    tx = snap.exists() && Array.isArray(snap.data().transacciones) ? snap.data().transacciones : [];
+    loaded = true;
+    render();
+  }, (e)=>{
+    console.error('No se pudo escuchar la libreta', e);
+  });
+}
+
+function stopListening(){
+  if(unsubscribe){ unsubscribe(); unsubscribe = null; }
 }
 
 async function save(){
-  if(!currentUid) return;
   try{
-    await setDoc(doc(db, 'usuarios', currentUid), { transacciones: tx }, { merge: true });
+    await setDoc(libretaRef, { transacciones: tx }, { merge: true });
   }catch(e){
     console.error('No se pudo guardar', e);
   }
@@ -667,10 +674,9 @@ function renderLogin(errorMsg){
 onAuthStateChanged(auth, (user)=>{
   if(user){
     currentUid = user.uid;
-    tx = [];
-    loaded = false;
-    load(user.uid);
+    startListening();
   }else{
+    stopListening();
     currentUid = null;
     tx = [];
     loaded = false;
