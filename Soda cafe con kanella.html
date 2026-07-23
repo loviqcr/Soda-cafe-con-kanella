@@ -68,6 +68,31 @@ html,body{background:var(--bg);margin:0;padding:0;height:100%;}
 }
 .ldg-logout:hover{color:var(--negative);border-color:var(--negative);}
 
+.ldg-adminbtn{
+  position:absolute;
+  left:0;
+  top:0;
+  background:transparent;
+  border:1px solid var(--border);
+  color:var(--text-muted);
+  border-radius:20px;
+  padding:6px 12px;
+  font-size:11.5px;
+  font-family:'Inter',sans-serif;
+  cursor:pointer;
+}
+.ldg-adminbtn:hover{color:var(--sinpe);border-color:var(--sinpe);}
+
+.ldg-admin-msg{
+  font-size:12.5px;
+  font-family:'IBM Plex Mono',monospace;
+  margin-bottom:12px;
+  display:none;
+}
+.ldg-admin-msg.show{display:block;}
+.ldg-admin-msg.ok{color:var(--positive);}
+.ldg-admin-msg.err{color:var(--negative);}
+
 .ldg-total{
   background:var(--surface);
   border:1px solid var(--border);
@@ -336,9 +361,9 @@ html,body{background:var(--bg);margin:0;padding:0;height:100%;}
 </div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import {
-  getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut
+  getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 import {
   getFirestore, doc, getDoc, setDoc
@@ -354,6 +379,7 @@ const firebaseConfig = {
 };
 
 const USER_DOMAIN = "sodakanella.local";
+const ADMIN_UID = "nJR8brlKSIgWvdPO8gkA56zIxSp2";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -363,10 +389,32 @@ const root = document.getElementById('root');
 let tx = [];
 let loaded = false;
 let panelOpen = false;
+let adminPanelOpen = false;
+let adminMsg = null;
 let formTipo = 'ingreso';
 let formMetodo = 'sinpe';
 let filterTab = 'todo';
 let currentUid = null;
+
+async function createUser(username, password){
+  const secondaryApp = initializeApp(firebaseConfig, 'admin-create-user-' + Date.now());
+  const secondaryAuth = getAuth(secondaryApp);
+  try{
+    await createUserWithEmailAndPassword(secondaryAuth, `${username}@${USER_DOMAIN}`, password);
+    adminMsg = { ok: true, text: `Usuario "${username}" creado.` };
+  }catch(e){
+    const msgs = {
+      'auth/email-already-in-use': 'Ese usuario ya existe.',
+      'auth/weak-password': 'La contraseña debe tener al menos 6 caracteres.',
+      'auth/invalid-email': 'Nombre de usuario inválido.'
+    };
+    adminMsg = { ok: false, text: msgs[e.code] || 'No se pudo crear el usuario.' };
+  }finally{
+    await signOut(secondaryAuth).catch(()=>{});
+    await deleteApp(secondaryApp).catch(()=>{});
+  }
+  render();
+}
 
 const fmt = (n) => '₡' + Number(n).toLocaleString('es-CR', {maximumFractionDigits:0});
 const today = () => new Date().toISOString().slice(0,10);
@@ -438,10 +486,26 @@ function render(){
   root.innerHTML = `
     <div class="ldg-root">
       <div class="ldg-header">
+        ${currentUid===ADMIN_UID ? `<button class="ldg-adminbtn" id="adminBtn">${adminPanelOpen ? 'Cerrar' : '+ Usuario'}</button>` : ''}
         <button class="ldg-logout" id="logoutBtn">Salir</button>
         <div class="eyebrow">Mi Libreta</div>
         <h1>Control de dinero</h1>
       </div>
+
+      ${currentUid===ADMIN_UID ? `
+      <div class="ldg-panel ${adminPanelOpen?'open':''}" id="adminPanel">
+        <div class="ldg-admin-msg ${adminMsg?'show':''} ${adminMsg&&adminMsg.ok?'ok':'err'}">${adminMsg?escapeHtml(adminMsg.text):''}</div>
+        <div class="ldg-field">
+          <label>Nuevo usuario</label>
+          <input type="text" id="newUserInput" autocomplete="off" placeholder="ej. maria">
+        </div>
+        <div class="ldg-field">
+          <label>Contraseña</label>
+          <input type="password" id="newPassInput" autocomplete="new-password" placeholder="mínimo 6 caracteres">
+        </div>
+        <button class="ldg-save" id="createUserBtn">Crear usuario</button>
+      </div>
+      ` : ''}
 
       <div class="ldg-total">
         <div class="label">Total disponible</div>
@@ -509,6 +573,24 @@ function render(){
 
   document.getElementById('logoutBtn').onclick = ()=> signOut(auth);
   document.getElementById('toggleBtn').onclick = ()=>{ panelOpen = !panelOpen; render(); };
+
+  if(currentUid===ADMIN_UID){
+    document.getElementById('adminBtn').onclick = ()=>{ adminPanelOpen = !adminPanelOpen; adminMsg = null; render(); };
+    if(adminPanelOpen){
+      document.getElementById('createUserBtn').onclick = ()=>{
+        const userEl = document.getElementById('newUserInput');
+        const passEl = document.getElementById('newPassInput');
+        const username = userEl.value.trim().toLowerCase();
+        const password = passEl.value;
+        if(!username || password.length<6){
+          adminMsg = { ok:false, text:'Escribí un usuario y una contraseña de al menos 6 caracteres.' };
+          render();
+          return;
+        }
+        createUser(username, password);
+      };
+    }
+  }
 
   if(panelOpen){
     root.querySelectorAll('[data-tipo]').forEach(btn=>{
