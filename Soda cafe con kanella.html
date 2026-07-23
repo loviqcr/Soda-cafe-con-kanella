@@ -1,0 +1,458 @@
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap');
+
+:root{
+  --bg:#12161B;
+  --surface:#1B2028;
+  --surface-2:#232933;
+  --border:#2A313D;
+  --sinpe:#5EC8D8;
+  --efectivo:#E0B04F;
+  --positive:#6FBF8B;
+  --negative:#D8735E;
+  --text:#EDEEF0;
+  --text-muted:#8B93A1;
+}
+
+*{box-sizing:border-box;}
+
+.ldg-root{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Inter',sans-serif;
+  min-height:100%;
+  padding:28px 16px 60px;
+  max-width:520px;
+  margin:0 auto;
+}
+
+.ldg-header{
+  text-align:center;
+  margin-bottom:22px;
+}
+.ldg-header .eyebrow{
+  font-family:'IBM Plex Mono',monospace;
+  font-size:11px;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--text-muted);
+  margin-bottom:6px;
+}
+.ldg-header h1{
+  font-family:'Fraunces',serif;
+  font-weight:500;
+  font-size:26px;
+  margin:0;
+}
+
+.ldg-total{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:20px 22px;
+  margin-bottom:14px;
+  position:relative;
+  overflow:hidden;
+}
+.ldg-total::before{
+  content:"";
+  position:absolute;
+  top:-40%;
+  right:-15%;
+  width:180px;
+  height:180px;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(224,176,79,.10),transparent 70%);
+}
+.ldg-total .label{
+  font-family:'IBM Plex Mono',monospace;
+  font-size:11px;
+  color:var(--text-muted);
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+.ldg-total .amount{
+  font-family:'Fraunces',serif;
+  font-size:38px;
+  font-weight:500;
+  margin-top:4px;
+  font-variant-numeric:tabular-nums;
+}
+
+.ldg-cards{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+  margin-bottom:20px;
+}
+.ldg-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:16px;
+}
+.ldg-card .dot{
+  width:9px;height:9px;border-radius:50%;
+  display:inline-block;margin-right:7px;
+}
+.ldg-card.sinpe .dot{background:var(--sinpe);}
+.ldg-card.efectivo .dot{background:var(--efectivo);}
+.ldg-card .name{
+  font-size:12.5px;
+  color:var(--text-muted);
+  display:flex;align-items:center;
+}
+.ldg-card .value{
+  font-family:'IBM Plex Mono',monospace;
+  font-size:20px;
+  font-weight:600;
+  margin-top:8px;
+  font-variant-numeric:tabular-nums;
+}
+
+.ldg-addbtn{
+  width:100%;
+  background:var(--efectivo);
+  color:#1a1400;
+  border:none;
+  border-radius:12px;
+  padding:13px;
+  font-family:'Inter',sans-serif;
+  font-weight:600;
+  font-size:14.5px;
+  cursor:pointer;
+  margin-bottom:18px;
+  transition:filter .15s ease, transform .15s ease;
+}
+.ldg-addbtn:hover{filter:brightness(1.08);}
+.ldg-addbtn:active{transform:scale(.98);}
+
+.ldg-panel{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:18px;
+  margin-bottom:20px;
+  display:none;
+}
+.ldg-panel.open{display:block;}
+
+.ldg-seg{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin-bottom:12px;
+}
+.ldg-seg button{
+  padding:10px;
+  border-radius:10px;
+  border:1px solid var(--border);
+  background:var(--surface-2);
+  color:var(--text-muted);
+  font-family:'Inter',sans-serif;
+  font-weight:600;
+  font-size:13.5px;
+  cursor:pointer;
+}
+.ldg-seg button.active.tipo-ingreso{background:rgba(111,191,139,.16);color:var(--positive);border-color:var(--positive);}
+.ldg-seg button.active.tipo-pago{background:rgba(216,115,94,.16);color:var(--negative);border-color:var(--negative);}
+.ldg-seg button.active.met-sinpe{background:rgba(94,200,216,.16);color:var(--sinpe);border-color:var(--sinpe);}
+.ldg-seg button.active.met-efectivo{background:rgba(224,176,79,.16);color:var(--efectivo);border-color:var(--efectivo);}
+
+.ldg-field{margin-bottom:12px;}
+.ldg-field label{
+  display:block;
+  font-size:11.5px;
+  color:var(--text-muted);
+  margin-bottom:6px;
+  font-family:'IBM Plex Mono',monospace;
+  letter-spacing:.04em;
+}
+.ldg-field input{
+  width:100%;
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  border-radius:9px;
+  padding:11px 12px;
+  color:var(--text);
+  font-family:'Inter',sans-serif;
+  font-size:14.5px;
+}
+.ldg-field input:focus{outline:2px solid var(--efectivo);outline-offset:1px;}
+.ldg-field input[type="number"]{font-family:'IBM Plex Mono',monospace;}
+
+.ldg-save{
+  width:100%;
+  background:var(--text);
+  color:var(--bg);
+  border:none;
+  border-radius:10px;
+  padding:12px;
+  font-weight:600;
+  font-size:14px;
+  cursor:pointer;
+  margin-top:4px;
+}
+
+.ldg-tabs{
+  display:flex;
+  gap:6px;
+  margin-bottom:12px;
+  border-bottom:1px solid var(--border);
+  padding-bottom:10px;
+}
+.ldg-tabs button{
+  background:transparent;
+  border:1px solid var(--border);
+  color:var(--text-muted);
+  padding:6px 12px;
+  border-radius:20px;
+  font-size:12.5px;
+  font-family:'Inter',sans-serif;
+  cursor:pointer;
+}
+.ldg-tabs button.active{
+  background:var(--surface-2);
+  color:var(--text);
+  border-color:var(--text-muted);
+}
+
+.ldg-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:12px 4px;
+  border-bottom:1px dashed var(--border);
+}
+.ldg-row:last-child{border-bottom:none;}
+.ldg-row .left{display:flex;flex-direction:column;gap:3px;}
+.ldg-row .note{font-size:14px;}
+.ldg-row .meta{
+  font-family:'IBM Plex Mono',monospace;
+  font-size:10.5px;
+  color:var(--text-muted);
+  display:flex;align-items:center;gap:6px;
+}
+.ldg-row .meta .tag{
+  padding:1px 6px;
+  border-radius:6px;
+  font-size:9.5px;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+}
+.ldg-row .meta .tag.sinpe{background:rgba(94,200,216,.14);color:var(--sinpe);}
+.ldg-row .meta .tag.efectivo{background:rgba(224,176,79,.14);color:var(--efectivo);}
+.ldg-row .right{display:flex;align-items:center;gap:10px;}
+.ldg-row .amount{
+  font-family:'IBM Plex Mono',monospace;
+  font-weight:600;
+  font-size:14.5px;
+  font-variant-numeric:tabular-nums;
+}
+.ldg-row .amount.pos{color:var(--positive);}
+.ldg-row .amount.neg{color:var(--negative);}
+.ldg-row .del{
+  background:transparent;
+  border:none;
+  color:var(--text-muted);
+  cursor:pointer;
+  font-size:15px;
+  line-height:1;
+  padding:4px;
+}
+.ldg-row .del:hover{color:var(--negative);}
+
+.ldg-empty{
+  text-align:center;
+  color:var(--text-muted);
+  font-size:13.5px;
+  padding:30px 10px;
+  font-family:'IBM Plex Mono',monospace;
+}
+
+.ldg-loading{text-align:center;color:var(--text-muted);padding:40px;font-family:'IBM Plex Mono',monospace;font-size:13px;}
+</style>
+
+<div class="ldg-root" id="root">
+  <div class="ldg-loading">Cargando tu libreta…</div>
+</div>
+
+<script>
+(function(){
+  const root = document.getElementById('root');
+  let tx = [];
+  let loaded = false;
+  let panelOpen = false;
+  let formTipo = 'ingreso';
+  let formMetodo = 'sinpe';
+  let filterTab = 'todo';
+
+  const fmt = (n) => '₡' + Number(n).toLocaleString('es-CR', {maximumFractionDigits:0});
+  const today = () => new Date().toISOString().slice(0,10);
+
+  async function load(){
+    try{
+      const res = await window.storage.get('transacciones', false);
+      tx = res && res.value ? JSON.parse(res.value) : [];
+    }catch(e){
+      tx = [];
+    }
+    loaded = true;
+    render();
+  }
+
+  async function save(){
+    try{
+      await window.storage.set('transacciones', JSON.stringify(tx), false);
+    }catch(e){
+      console.error('No se pudo guardar', e);
+    }
+  }
+
+  function balances(){
+    let sinpe=0, efectivo=0;
+    tx.forEach(t=>{
+      const sign = t.tipo==='ingreso' ? 1 : -1;
+      if(t.metodo==='sinpe') sinpe += sign*t.monto;
+      else efectivo += sign*t.monto;
+    });
+    return {sinpe, efectivo, total: sinpe+efectivo};
+  }
+
+  function addTx(monto, nota){
+    tx.unshift({
+      id: Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+      tipo: formTipo,
+      metodo: formMetodo,
+      monto: monto,
+      nota: nota || (formTipo==='ingreso' ? 'Ingreso' : 'Pago'),
+      fecha: today()
+    });
+    save();
+    panelOpen = false;
+    render();
+  }
+
+  function delTx(id){
+    tx = tx.filter(t=>t.id!==id);
+    save();
+    render();
+  }
+
+  function render(){
+    if(!loaded){
+      root.innerHTML = '<div class="ldg-loading">Cargando tu libreta…</div>';
+      return;
+    }
+    const b = balances();
+    const list = tx.filter(t => filterTab==='todo' ? true : t.metodo===filterTab);
+
+    root.innerHTML = `
+      <div class="ldg-header">
+        <div class="eyebrow">Mi Libreta</div>
+        <h1>Control de dinero</h1>
+      </div>
+
+      <div class="ldg-total">
+        <div class="label">Total disponible</div>
+        <div class="amount">${fmt(b.total)}</div>
+      </div>
+
+      <div class="ldg-cards">
+        <div class="ldg-card sinpe">
+          <div class="name"><span class="dot"></span>SINPE</div>
+          <div class="value">${fmt(b.sinpe)}</div>
+        </div>
+        <div class="ldg-card efectivo">
+          <div class="name"><span class="dot"></span>Efectivo</div>
+          <div class="value">${fmt(b.efectivo)}</div>
+        </div>
+      </div>
+
+      <button class="ldg-addbtn" id="toggleBtn">${panelOpen ? 'Cancelar' : '+ Registrar movimiento'}</button>
+
+      <div class="ldg-panel ${panelOpen?'open':''}" id="panel">
+        <div class="ldg-seg">
+          <button type="button" class="tipo-ingreso ${formTipo==='ingreso'?'active':''}" data-tipo="ingreso">Ingreso</button>
+          <button type="button" class="tipo-pago ${formTipo==='pago'?'active':''}" data-tipo="pago">Pago</button>
+        </div>
+        <div class="ldg-seg">
+          <button type="button" class="met-sinpe ${formMetodo==='sinpe'?'active':''}" data-metodo="sinpe">SINPE</button>
+          <button type="button" class="met-efectivo ${formMetodo==='efectivo'?'active':''}" data-metodo="efectivo">Efectivo</button>
+        </div>
+        <div class="ldg-field">
+          <label>Monto (₡)</label>
+          <input type="number" id="montoInput" inputmode="numeric" placeholder="0" min="0" step="1">
+        </div>
+        <div class="ldg-field">
+          <label>Nota (opcional)</label>
+          <input type="text" id="notaInput" placeholder="Ej. Salario, almuerzo, Uber...">
+        </div>
+        <button class="ldg-save" id="saveBtn">Guardar</button>
+      </div>
+
+      <div class="ldg-tabs">
+        <button data-tab="todo" class="${filterTab==='todo'?'active':''}">Todo</button>
+        <button data-tab="sinpe" class="${filterTab==='sinpe'?'active':''}">SINPE</button>
+        <button data-tab="efectivo" class="${filterTab==='efectivo'?'active':''}">Efectivo</button>
+      </div>
+
+      <div id="list">
+        ${list.length===0 ? '<div class="ldg-empty">Sin movimientos todavía.<br>Registrá el primero arriba.</div>' : list.map(t=>`
+          <div class="ldg-row">
+            <div class="left">
+              <div class="note">${escapeHtml(t.nota)}</div>
+              <div class="meta">
+                <span>${t.fecha}</span>
+                <span class="tag ${t.metodo}">${t.metodo==='sinpe'?'SINPE':'Efectivo'}</span>
+              </div>
+            </div>
+            <div class="right">
+              <div class="amount ${t.tipo==='ingreso'?'pos':'neg'}">${t.tipo==='ingreso'?'+':'−'}${fmt(t.monto)}</div>
+              <button class="del" data-del="${t.id}" title="Eliminar">✕</button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+
+    document.getElementById('toggleBtn').onclick = ()=>{ panelOpen = !panelOpen; render(); };
+
+    if(panelOpen){
+      root.querySelectorAll('[data-tipo]').forEach(btn=>{
+        btn.onclick = ()=>{ formTipo = btn.dataset.tipo; render(); };
+      });
+      root.querySelectorAll('[data-metodo]').forEach(btn=>{
+        btn.onclick = ()=>{ formMetodo = btn.dataset.metodo; render(); };
+      });
+      document.getElementById('saveBtn').onclick = ()=>{
+        const montoEl = document.getElementById('montoInput');
+        const notaEl = document.getElementById('notaInput');
+        const monto = parseFloat(montoEl.value);
+        if(!monto || monto<=0){
+          montoEl.focus();
+          montoEl.style.outline = '2px solid var(--negative)';
+          return;
+        }
+        addTx(monto, notaEl.value.trim());
+      };
+    }
+
+    root.querySelectorAll('[data-tab]').forEach(btn=>{
+      btn.onclick = ()=>{ filterTab = btn.dataset.tab; render(); };
+    });
+
+    root.querySelectorAll('[data-del]').forEach(btn=>{
+      btn.onclick = ()=> delTx(btn.dataset.del);
+    });
+  }
+
+  function escapeHtml(s){
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  load();
+})();
+</script>
