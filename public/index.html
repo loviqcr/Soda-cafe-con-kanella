@@ -3,21 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mi Libreta — Soda Café con Kanella</title>
+<title>Soda &amp; Pizza — Café con Kanella</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700&family=Pacifico&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap');
 
 :root{
-  --bg:#12161B;
-  --surface:#1B2028;
-  --surface-2:#232933;
-  --border:#2A313D;
-  --sinpe:#5EC8D8;
-  --efectivo:#E0B04F;
-  --positive:#6FBF8B;
-  --negative:#D8735E;
-  --text:#EDEEF0;
-  --text-muted:#8B93A1;
+  --bg:#FDFBF8;
+  --surface:#FFFFFF;
+  --surface-2:#F5EFE6;
+  --border:#E8DFD1;
+  --primary:#1C7FCB;
+  --sinpe:#1C7FCB;
+  --efectivo:#7A4A21;
+  --positive:#2F9E5B;
+  --negative:#D1503B;
+  --text:#2A2117;
+  --text-muted:#8C8071;
 }
 
 *{box-sizing:border-box;}
@@ -45,13 +46,43 @@ html,body{background:var(--bg);margin:0;padding:0;height:100%;}
   letter-spacing:.14em;
   text-transform:uppercase;
   color:var(--text-muted);
-  margin-bottom:6px;
+  margin-top:4px;
 }
-.ldg-header h1{
-  font-family:'Fraunces',serif;
-  font-weight:500;
-  font-size:26px;
-  margin:0;
+
+.brand{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  margin-bottom:2px;
+}
+.brand-cup{font-size:26px;line-height:1;}
+.brand-ticks{display:flex;flex-direction:column;gap:3px;}
+.brand-ticks span{
+  display:block;
+  width:16px;height:3px;
+  background:var(--primary);
+  border-radius:2px;
+}
+.brand-ticks.left span:nth-child(1){transform:rotate(18deg);align-self:flex-end;}
+.brand-ticks.left span:nth-child(2){transform:rotate(8deg);align-self:flex-end;width:12px;}
+.brand-ticks.left span:nth-child(3){transform:rotate(-2deg);align-self:flex-end;width:9px;}
+.brand-ticks.right span:nth-child(1){transform:rotate(-18deg);}
+.brand-ticks.right span:nth-child(2){transform:rotate(-8deg);width:12px;}
+.brand-ticks.right span:nth-child(3){transform:rotate(2deg);width:9px;}
+.brand-top{
+  font-family:'Baloo 2',sans-serif;
+  font-weight:700;
+  font-size:19px;
+  color:var(--primary);
+  letter-spacing:.01em;
+}
+.brand-script{
+  font-family:'Pacifico',cursive;
+  font-size:32px;
+  color:var(--efectivo);
+  line-height:1.15;
+  margin-top:2px;
 }
 .ldg-logout{
   position:absolute;
@@ -110,7 +141,7 @@ html,body{background:var(--bg);margin:0;padding:0;height:100%;}
   width:180px;
   height:180px;
   border-radius:50%;
-  background:radial-gradient(circle,rgba(224,176,79,.10),transparent 70%);
+  background:radial-gradient(circle,rgba(28,127,203,.08),transparent 70%);
 }
 .ldg-total .label{
   font-family:'IBM Plex Mono',monospace;
@@ -160,8 +191,8 @@ html,body{background:var(--bg);margin:0;padding:0;height:100%;}
 
 .ldg-addbtn{
   width:100%;
-  background:var(--efectivo);
-  color:#1a1400;
+  background:var(--primary);
+  color:#fff;
   border:none;
   border-radius:12px;
   padding:13px;
@@ -202,10 +233,10 @@ html,body{background:var(--bg);margin:0;padding:0;height:100%;}
   font-size:13.5px;
   cursor:pointer;
 }
-.ldg-seg button.active.tipo-ingreso{background:rgba(111,191,139,.16);color:var(--positive);border-color:var(--positive);}
-.ldg-seg button.active.tipo-pago{background:rgba(216,115,94,.16);color:var(--negative);border-color:var(--negative);}
-.ldg-seg button.active.met-sinpe{background:rgba(94,200,216,.16);color:var(--sinpe);border-color:var(--sinpe);}
-.ldg-seg button.active.met-efectivo{background:rgba(224,176,79,.16);color:var(--efectivo);border-color:var(--efectivo);}
+.ldg-seg button.active.tipo-ingreso{background:rgba(47,158,91,.14);color:var(--positive);border-color:var(--positive);}
+.ldg-seg button.active.tipo-pago{background:rgba(209,80,59,.14);color:var(--negative);border-color:var(--negative);}
+.ldg-seg button.active.met-sinpe{background:rgba(28,127,203,.14);color:var(--sinpe);border-color:var(--sinpe);}
+.ldg-seg button.active.met-efectivo{background:rgba(122,74,33,.14);color:var(--efectivo);border-color:var(--efectivo);}
 
 .ldg-field{margin-bottom:12px;}
 .ldg-field label{
@@ -226,13 +257,13 @@ html,body{background:var(--bg);margin:0;padding:0;height:100%;}
   font-family:'Inter',sans-serif;
   font-size:14.5px;
 }
-.ldg-field input:focus{outline:2px solid var(--efectivo);outline-offset:1px;}
+.ldg-field input:focus{outline:2px solid var(--primary);outline-offset:1px;}
 .ldg-field input[type="number"]{font-family:'IBM Plex Mono',monospace;}
 
 .ldg-save{
   width:100%;
-  background:var(--text);
-  color:var(--bg);
+  background:var(--primary);
+  color:#fff;
   border:none;
   border-radius:10px;
   padding:12px;
@@ -288,8 +319,8 @@ html,body{background:var(--bg);margin:0;padding:0;height:100%;}
   letter-spacing:.04em;
   text-transform:uppercase;
 }
-.ldg-row .meta .tag.sinpe{background:rgba(94,200,216,.14);color:var(--sinpe);}
-.ldg-row .meta .tag.efectivo{background:rgba(224,176,79,.14);color:var(--efectivo);}
+.ldg-row .meta .tag.sinpe{background:rgba(28,127,203,.12);color:var(--sinpe);}
+.ldg-row .meta .tag.efectivo{background:rgba(122,74,33,.12);color:var(--efectivo);}
 .ldg-row .right{display:flex;align-items:center;gap:10px;}
 .ldg-row .amount{
   font-family:'IBM Plex Mono',monospace;
@@ -323,7 +354,7 @@ html,body{background:var(--bg);margin:0;padding:0;height:100%;}
 .ldg-login{
   max-width:340px;
   margin:0 auto;
-  padding-top:80px;
+  padding-top:50px;
 }
 .ldg-login .ldg-header{margin-bottom:28px;}
 .ldg-login-panel{
@@ -342,8 +373,8 @@ html,body{background:var(--bg);margin:0;padding:0;height:100%;}
 .ldg-login-error.show{display:block;}
 .ldg-login-btn{
   width:100%;
-  background:var(--efectivo);
-  color:#1a1400;
+  background:var(--primary);
+  color:#fff;
   border:none;
   border-radius:10px;
   padding:13px;
@@ -427,6 +458,19 @@ function escapeHtml(s){
   return d.innerHTML;
 }
 
+function brandHtml(subtitle){
+  return `
+    <div class="brand">
+      <div class="brand-ticks left"><span></span><span></span><span></span></div>
+      <span class="brand-cup">☕</span>
+      <div class="brand-ticks right"><span></span><span></span><span></span></div>
+    </div>
+    <div class="brand-top">Soda &amp; Pizza</div>
+    <div class="brand-script">Café con <b>Kanella</b></div>
+    <div class="eyebrow">${subtitle}</div>
+  `;
+}
+
 function startListening(){
   tx = [];
   loaded = false;
@@ -495,8 +539,7 @@ function render(){
       <div class="ldg-header">
         ${currentUid===ADMIN_UID ? `<button class="ldg-adminbtn" id="adminBtn">${adminPanelOpen ? 'Cerrar' : '+ Usuario'}</button>` : ''}
         <button class="ldg-logout" id="logoutBtn">Salir</button>
-        <div class="eyebrow">Mi Libreta</div>
-        <h1>Control de dinero</h1>
+        ${brandHtml('Libreta de caja')}
       </div>
 
       ${currentUid===ADMIN_UID ? `
@@ -632,8 +675,7 @@ function renderLogin(errorMsg){
   root.innerHTML = `
     <div class="ldg-root ldg-login">
       <div class="ldg-header">
-        <div class="eyebrow">Mi Libreta</div>
-        <h1>Iniciar sesión</h1>
+        ${brandHtml('Iniciar sesión')}
       </div>
       <div class="ldg-login-panel">
         <div class="ldg-login-error ${errorMsg?'show':''}">${errorMsg ? escapeHtml(errorMsg) : ''}</div>
