@@ -128,6 +128,40 @@ html,body{background:var(--bg);margin:0;padding:0;height:100%;}
 .ldg-admin-msg.ok{color:var(--positive);}
 .ldg-admin-msg.err{color:var(--negative);}
 
+.ldg-userslist{
+  margin-top:18px;
+  padding-top:14px;
+  border-top:1px solid var(--border);
+}
+.ldg-userslist-title{
+  font-family:'IBM Plex Mono',monospace;
+  font-size:11px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:var(--text-muted);
+  margin-bottom:8px;
+}
+.ldg-user-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:9px 2px;
+  border-bottom:1px dashed var(--border);
+}
+.ldg-user-row:last-child{border-bottom:none;}
+.ldg-user-row .uname{font-size:14px;font-weight:600;}
+.ldg-user-row .uemail{font-size:11.5px;color:var(--text-muted);}
+.ldg-admin-badge{
+  background:rgba(28,127,203,.14);
+  color:var(--primary);
+  font-size:10.5px;
+  font-weight:600;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+  padding:3px 8px;
+  border-radius:8px;
+}
+
 .ldg-total{
   background:var(--surface);
   border:1px solid var(--border);
@@ -432,7 +466,7 @@ import {
   getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword, sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 import {
-  getFirestore, doc, getDoc, onSnapshot, setDoc
+  getFirestore, doc, getDoc, getDocs, collection, onSnapshot, setDoc
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -461,6 +495,8 @@ let filterTab = 'todo';
 let currentUid = null;
 let isAdmin = false;
 let unsubscribe = null;
+let usersList = [];
+let usersListLoaded = false;
 
 async function resolveEmail(username){
   const snap = await getDoc(doc(db, 'usernames', username));
@@ -470,6 +506,13 @@ async function resolveEmail(username){
 async function checkIsAdmin(uid){
   const snap = await getDoc(doc(db, 'admins', uid));
   return snap.exists();
+}
+
+async function loadUsersList(){
+  const snap = await getDocs(collection(db, 'usernames'));
+  usersList = snap.docs.map(d => ({ username: d.id, ...d.data() }));
+  usersListLoaded = true;
+  render();
 }
 
 async function createUser(username, email, password, makeAdmin){
@@ -482,11 +525,12 @@ async function createUser(username, email, password, makeAdmin){
       return;
     }
     const cred = await createUserWithEmailAndPassword(secondaryAuth, email, password);
-    await setDoc(doc(db, 'usernames', username), { email });
+    await setDoc(doc(db, 'usernames', username), { email, uid: cred.user.uid, isAdmin: !!makeAdmin });
     if(makeAdmin){
       await setDoc(doc(db, 'admins', cred.user.uid), { isAdmin: true });
     }
     adminMsg = { ok: true, text: `Usuario "${username}" creado${makeAdmin ? ' como administrador' : ''}.` };
+    await loadUsersList();
   }catch(e){
     const msgs = {
       'auth/email-already-in-use': 'Ese correo ya está en uso por otra cuenta.',
@@ -616,6 +660,19 @@ function render(){
           </label>
         </div>
         <button class="ldg-save" id="createUserBtn">Crear usuario</button>
+
+        <div class="ldg-userslist">
+          <div class="ldg-userslist-title">Usuarios activos</div>
+          ${!usersListLoaded ? '<div class="ldg-empty">Cargando usuarios…</div>' : usersList.length===0 ? '<div class="ldg-empty">Sin usuarios todavía.</div>' : usersList.map(u => `
+            <div class="ldg-user-row">
+              <div class="left">
+                <div class="uname">${escapeHtml(u.username)}</div>
+                <div class="uemail">${escapeHtml(u.email || '')}</div>
+              </div>
+              ${u.isAdmin ? '<span class="ldg-admin-badge">Admin</span>' : ''}
+            </div>
+          `).join('')}
+        </div>
       </div>
       ` : ''}
 
@@ -687,7 +744,12 @@ function render(){
   document.getElementById('toggleBtn').onclick = ()=>{ panelOpen = !panelOpen; render(); };
 
   if(isAdmin){
-    document.getElementById('adminBtn').onclick = ()=>{ adminPanelOpen = !adminPanelOpen; adminMsg = null; render(); };
+    document.getElementById('adminBtn').onclick = ()=>{
+      adminPanelOpen = !adminPanelOpen;
+      adminMsg = null;
+      render();
+      if(adminPanelOpen && !usersListLoaded) loadUsersList();
+    };
     if(adminPanelOpen){
       document.getElementById('createUserBtn').onclick = ()=>{
         const userEl = document.getElementById('newUserInput');
@@ -816,6 +878,8 @@ onAuthStateChanged(auth, async (user)=>{
     isAdmin = false;
     tx = [];
     loaded = false;
+    usersList = [];
+    usersListLoaded = false;
     renderLogin();
   }
 });
