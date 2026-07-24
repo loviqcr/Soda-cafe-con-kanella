@@ -534,13 +534,32 @@ async function loadUsersList(){
   render();
 }
 
+const ADMIN_WORKER_URL = "https://soda-admin-worker.sodakanella.workers.dev";
+
 async function deleteUserRecord(username, uid){
   try{
     await deleteDoc(doc(db, 'usernames', username));
     if(uid){
       await deleteDoc(doc(db, 'admins', uid)).catch(()=>{});
     }
-    adminMsg = { ok: true, text: `Usuario "${username}" eliminado. Ya no podrá iniciar sesión.` };
+    let fullyDeleted = false;
+    if(uid){
+      const idToken = await auth.currentUser.getIdToken();
+      for(let attempt=0; attempt<3 && !fullyDeleted; attempt++){
+        try{
+          if(attempt>0) await new Promise(r=>setTimeout(r, 1000*attempt));
+          const res = await fetch(ADMIN_WORKER_URL, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${idToken}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ uid })
+          });
+          fullyDeleted = res.ok;
+        }catch(e){
+          fullyDeleted = false;
+        }
+      }
+    }
+    adminMsg = { ok: true, text: `Usuario "${username}" eliminado${fullyDeleted ? ' por completo. Su correo ya se puede reutilizar.' : '. Ya no podrá iniciar sesión.'}` };
     await loadUsersList();
   }catch(e){
     adminMsg = { ok: false, text: 'No se pudo eliminar el usuario.' };
