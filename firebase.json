@@ -7,7 +7,7 @@
     "public": "public",
     "ignore": [
       "firebase.json",
-      "**/.*"
+      "**/.DS_Store"
     ]
   }
 }

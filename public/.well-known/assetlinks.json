@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.web.soda_cafe_kanella.twa",
+      "sha256_cert_fingerprints": [
+        "77:B8:79:EA:90:C4:BD:EE:3D:2B:5E:88:DC:AC:D0:E5:4E:78:CF:C7:68:B3:64:D4:BC:C6:25:7F:33:4C:A7:FA"
+      ]
+    }
+  }
+]
