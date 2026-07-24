@@ -264,6 +264,21 @@ html,body{background:var(--bg);margin:0;padding:0;height:100%;}
 .ldg-field input:focus{outline:2px solid var(--primary);outline-offset:1px;}
 .ldg-field input[type="number"]{font-family:'IBM Plex Mono',monospace;}
 
+.ldg-checkbox-label{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  cursor:pointer;
+  font-size:13px;
+  color:var(--text);
+}
+.ldg-checkbox-label input[type="checkbox"]{
+  width:16px;
+  height:16px;
+  flex-shrink:0;
+  accent-color:var(--primary);
+}
+
 .ldg-save{
   width:100%;
   background:var(--primary);
@@ -429,8 +444,6 @@ const firebaseConfig = {
   appId: "1:361868368683:web:2d5136aba0cd3b9bc6436e"
 };
 
-const ADMIN_UID = "nJR8brlKSIgWvdPO8gkA56zIxSp2";
-
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -446,6 +459,7 @@ let formTipo = 'ingreso';
 let formMetodo = 'sinpe';
 let filterTab = 'todo';
 let currentUid = null;
+let isAdmin = false;
 let unsubscribe = null;
 
 async function resolveEmail(username){
@@ -453,7 +467,12 @@ async function resolveEmail(username){
   return snap.exists() ? snap.data().email : null;
 }
 
-async function createUser(username, email, password){
+async function checkIsAdmin(uid){
+  const snap = await getDoc(doc(db, 'admins', uid));
+  return snap.exists();
+}
+
+async function createUser(username, email, password, makeAdmin){
   const secondaryApp = initializeApp(firebaseConfig, 'admin-create-user-' + Date.now());
   const secondaryAuth = getAuth(secondaryApp);
   try{
@@ -462,9 +481,12 @@ async function createUser(username, email, password){
       adminMsg = { ok: false, text: 'Ese usuario ya existe.' };
       return;
     }
-    await createUserWithEmailAndPassword(secondaryAuth, email, password);
+    const cred = await createUserWithEmailAndPassword(secondaryAuth, email, password);
     await setDoc(doc(db, 'usernames', username), { email });
-    adminMsg = { ok: true, text: `Usuario "${username}" creado.` };
+    if(makeAdmin){
+      await setDoc(doc(db, 'admins', cred.user.uid), { isAdmin: true });
+    }
+    adminMsg = { ok: true, text: `Usuario "${username}" creado${makeAdmin ? ' como administrador' : ''}.` };
   }catch(e){
     const msgs = {
       'auth/email-already-in-use': 'Ese correo ya está en uso por otra cuenta.',
@@ -567,12 +589,12 @@ function render(){
   root.innerHTML = `
     <div class="ldg-root">
       <div class="ldg-header">
-        ${currentUid===ADMIN_UID ? `<button class="ldg-adminbtn" id="adminBtn">${adminPanelOpen ? 'Cerrar' : '+ Usuario'}</button>` : ''}
+        ${isAdmin ? `<button class="ldg-adminbtn" id="adminBtn">${adminPanelOpen ? 'Cerrar' : '+ Usuario'}</button>` : ''}
         <button class="ldg-logout" id="logoutBtn">Salir</button>
         ${brandHtml('Libreta de caja')}
       </div>
 
-      ${currentUid===ADMIN_UID ? `
+      ${isAdmin ? `
       <div class="ldg-panel ${adminPanelOpen?'open':''}" id="adminPanel">
         <div class="ldg-admin-msg ${adminMsg?'show':''} ${adminMsg&&adminMsg.ok?'ok':'err'}">${adminMsg?escapeHtml(adminMsg.text):''}</div>
         <div class="ldg-field">
@@ -586,6 +608,12 @@ function render(){
         <div class="ldg-field">
           <label>Contraseña</label>
           <input type="password" id="newPassInput" autocomplete="new-password" placeholder="mínimo 6 caracteres">
+        </div>
+        <div class="ldg-field ldg-admin-check">
+          <label class="ldg-checkbox-label">
+            <input type="checkbox" id="newIsAdminInput">
+            <span>Es administrador (puede crear usuarios y borrar movimientos)</span>
+          </label>
         </div>
         <button class="ldg-save" id="createUserBtn">Crear usuario</button>
       </div>
@@ -647,7 +675,7 @@ function render(){
             </div>
             <div class="right">
               <div class="amount ${t.tipo==='ingreso'?'pos':'neg'}">${t.tipo==='ingreso'?'+':'−'}${fmt(t.monto)}</div>
-              ${currentUid===ADMIN_UID ? `<button class="del" data-del="${t.id}" title="Eliminar">✕</button>` : ''}
+              ${isAdmin ? `<button class="del" data-del="${t.id}" title="Eliminar">✕</button>` : ''}
             </div>
           </div>
         `).join('')}
@@ -658,22 +686,24 @@ function render(){
   document.getElementById('logoutBtn').onclick = ()=> signOut(auth);
   document.getElementById('toggleBtn').onclick = ()=>{ panelOpen = !panelOpen; render(); };
 
-  if(currentUid===ADMIN_UID){
+  if(isAdmin){
     document.getElementById('adminBtn').onclick = ()=>{ adminPanelOpen = !adminPanelOpen; adminMsg = null; render(); };
     if(adminPanelOpen){
       document.getElementById('createUserBtn').onclick = ()=>{
         const userEl = document.getElementById('newUserInput');
         const emailEl = document.getElementById('newEmailInput');
         const passEl = document.getElementById('newPassInput');
+        const isAdminEl = document.getElementById('newIsAdminInput');
         const username = userEl.value.trim().toLowerCase();
         const email = emailEl.value.trim();
         const password = passEl.value;
+        const makeAdmin = isAdminEl.checked;
         if(!username || !email || password.length<6){
           adminMsg = { ok:false, text:'Completá usuario, correo real y una contraseña de al menos 6 caracteres.' };
           render();
           return;
         }
-        createUser(username, email, password);
+        createUser(username, email, password, makeAdmin);
       };
     }
   }
@@ -775,13 +805,15 @@ function renderLogin(msg){
   passInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') doLogin(); });
 }
 
-onAuthStateChanged(auth, (user)=>{
+onAuthStateChanged(auth, async (user)=>{
   if(user){
     currentUid = user.uid;
+    isAdmin = await checkIsAdmin(user.uid);
     startListening();
   }else{
     stopListening();
     currentUid = null;
+    isAdmin = false;
     tx = [];
     loaded = false;
     renderLogin();
