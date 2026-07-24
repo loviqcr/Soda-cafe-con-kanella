@@ -566,7 +566,7 @@ async function createUser(username, email, password, makeAdmin){
     await loadUsersList();
   }catch(e){
     const msgs = {
-      'auth/email-already-in-use': 'Ese correo ya está en uso por otra cuenta.',
+      'auth/email-already-in-use': 'Ese correo ya está en uso. Si eliminaste este usuario antes, pedile a soporte que borre la cuenta anterior por completo antes de recrearla.',
       'auth/weak-password': 'La contraseña debe tener al menos 6 caracteres.',
       'auth/invalid-email': 'Correo inválido.'
     };
