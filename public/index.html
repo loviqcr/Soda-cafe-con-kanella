@@ -371,6 +371,7 @@ html,body{background:var(--bg);margin:0;padding:0;height:100%;}
   display:none;
 }
 .ldg-login-error.show{display:block;}
+.ldg-login-error.ok{color:var(--positive);}
 .ldg-login-btn{
   width:100%;
   background:var(--primary);
@@ -384,6 +385,21 @@ html,body{background:var(--bg);margin:0;padding:0;height:100%;}
   margin-top:6px;
 }
 .ldg-login-btn:disabled{opacity:.6;cursor:default;}
+.ldg-forgot{
+  display:block;
+  width:100%;
+  background:transparent;
+  border:none;
+  color:var(--text-muted);
+  font-size:12px;
+  font-family:'Inter',sans-serif;
+  text-decoration:underline;
+  cursor:pointer;
+  margin-top:12px;
+  padding:4px;
+}
+.ldg-forgot:hover{color:var(--primary);}
+.ldg-forgot:disabled{opacity:.6;cursor:default;}
 </style>
 </head>
 <body>
@@ -394,10 +410,10 @@ html,body{background:var(--bg);margin:0;padding:0;height:100%;}
 <script type="module">
 import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import {
-  getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword
+  getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword, sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 import {
-  getFirestore, doc, onSnapshot, setDoc
+  getFirestore, doc, getDoc, onSnapshot, setDoc
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -409,7 +425,6 @@ const firebaseConfig = {
   appId: "1:361868368683:web:2d5136aba0cd3b9bc6436e"
 };
 
-const USER_DOMAIN = "sodakanella.local";
 const ADMIN_UID = "nJR8brlKSIgWvdPO8gkA56zIxSp2";
 
 const app = initializeApp(firebaseConfig);
@@ -429,17 +444,28 @@ let filterTab = 'todo';
 let currentUid = null;
 let unsubscribe = null;
 
-async function createUser(username, password){
+async function resolveEmail(username){
+  const snap = await getDoc(doc(db, 'usernames', username));
+  return snap.exists() ? snap.data().email : null;
+}
+
+async function createUser(username, email, password){
   const secondaryApp = initializeApp(firebaseConfig, 'admin-create-user-' + Date.now());
   const secondaryAuth = getAuth(secondaryApp);
   try{
-    await createUserWithEmailAndPassword(secondaryAuth, `${username}@${USER_DOMAIN}`, password);
+    const existing = await resolveEmail(username);
+    if(existing){
+      adminMsg = { ok: false, text: 'Ese usuario ya existe.' };
+      return;
+    }
+    await createUserWithEmailAndPassword(secondaryAuth, email, password);
+    await setDoc(doc(db, 'usernames', username), { email });
     adminMsg = { ok: true, text: `Usuario "${username}" creado.` };
   }catch(e){
     const msgs = {
-      'auth/email-already-in-use': 'Ese usuario ya existe.',
+      'auth/email-already-in-use': 'Ese correo ya está en uso por otra cuenta.',
       'auth/weak-password': 'La contraseña debe tener al menos 6 caracteres.',
-      'auth/invalid-email': 'Nombre de usuario inválido.'
+      'auth/invalid-email': 'Correo inválido.'
     };
     adminMsg = { ok: false, text: msgs[e.code] || 'No se pudo crear el usuario.' };
   }finally{
@@ -550,6 +576,10 @@ function render(){
           <input type="text" id="newUserInput" autocomplete="off" placeholder="ej. maria">
         </div>
         <div class="ldg-field">
+          <label>Correo real (para recuperar contraseña)</label>
+          <input type="email" id="newEmailInput" autocomplete="off" placeholder="maria@gmail.com">
+        </div>
+        <div class="ldg-field">
           <label>Contraseña</label>
           <input type="password" id="newPassInput" autocomplete="new-password" placeholder="mínimo 6 caracteres">
         </div>
@@ -629,15 +659,17 @@ function render(){
     if(adminPanelOpen){
       document.getElementById('createUserBtn').onclick = ()=>{
         const userEl = document.getElementById('newUserInput');
+        const emailEl = document.getElementById('newEmailInput');
         const passEl = document.getElementById('newPassInput');
         const username = userEl.value.trim().toLowerCase();
+        const email = emailEl.value.trim();
         const password = passEl.value;
-        if(!username || password.length<6){
-          adminMsg = { ok:false, text:'Escribí un usuario y una contraseña de al menos 6 caracteres.' };
+        if(!username || !email || password.length<6){
+          adminMsg = { ok:false, text:'Completá usuario, correo real y una contraseña de al menos 6 caracteres.' };
           render();
           return;
         }
-        createUser(username, password);
+        createUser(username, email, password);
       };
     }
   }
@@ -675,14 +707,14 @@ function render(){
   });
 }
 
-function renderLogin(errorMsg){
+function renderLogin(msg){
   root.innerHTML = `
     <div class="ldg-root ldg-login">
       <div class="ldg-header">
         ${brandHtml('Iniciar sesión')}
       </div>
       <div class="ldg-login-panel">
-        <div class="ldg-login-error ${errorMsg?'show':''}">${errorMsg ? escapeHtml(errorMsg) : ''}</div>
+        <div class="ldg-login-error ${msg?'show':''} ${msg&&msg.ok?'ok':''}">${msg?escapeHtml(msg.text):''}</div>
         <div class="ldg-field">
           <label>Usuario</label>
           <input type="text" id="userInput" autocomplete="username" placeholder="jchaves">
@@ -692,6 +724,7 @@ function renderLogin(errorMsg){
           <input type="password" id="passInput" autocomplete="current-password" placeholder="••••••••">
         </div>
         <button class="ldg-login-btn" id="loginBtn">Entrar</button>
+        <button type="button" class="ldg-forgot" id="forgotBtn">¿Olvidaste tu contraseña?</button>
       </div>
     </div>
   `;
@@ -699,6 +732,7 @@ function renderLogin(errorMsg){
   const userInput = document.getElementById('userInput');
   const passInput = document.getElementById('passInput');
   const loginBtn = document.getElementById('loginBtn');
+  const forgotBtn = document.getElementById('forgotBtn');
 
   async function doLogin(){
     const username = userInput.value.trim().toLowerCase();
@@ -707,13 +741,33 @@ function renderLogin(errorMsg){
     loginBtn.disabled = true;
     loginBtn.textContent = 'Entrando…';
     try{
-      await signInWithEmailAndPassword(auth, `${username}@${USER_DOMAIN}`, password);
+      const email = await resolveEmail(username);
+      if(!email) throw new Error('no-user');
+      await signInWithEmailAndPassword(auth, email, password);
     }catch(e){
-      renderLogin('Usuario o contraseña incorrectos.');
+      renderLogin({ ok:false, text:'Usuario o contraseña incorrectos.' });
+    }
+  }
+
+  async function doForgot(){
+    const username = userInput.value.trim().toLowerCase();
+    if(!username){
+      renderLogin({ ok:false, text:'Escribí tu usuario arriba y luego tocá "¿Olvidaste tu contraseña?".' });
+      return;
+    }
+    forgotBtn.disabled = true;
+    try{
+      const email = await resolveEmail(username);
+      if(!email) throw new Error('no-user');
+      await sendPasswordResetEmail(auth, email);
+      renderLogin({ ok:true, text:'Te enviamos un correo para restablecer tu contraseña.' });
+    }catch(e){
+      renderLogin({ ok:false, text:'Ese usuario no existe.' });
     }
   }
 
   loginBtn.onclick = doLogin;
+  forgotBtn.onclick = doForgot;
   passInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') doLogin(); });
 }
 
