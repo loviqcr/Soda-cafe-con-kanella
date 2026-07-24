@@ -375,6 +375,8 @@ html,body{background:var(--bg);margin:0;padding:0;height:100%;}
 }
 .ldg-row .meta .tag.sinpe{background:rgba(28,127,203,.12);color:var(--sinpe);}
 .ldg-row .meta .tag.efectivo{background:rgba(122,74,33,.12);color:var(--efectivo);}
+.ldg-row .meta .user{color:var(--text-muted);}
+.ldg-row .meta .user::before{content:"· ";}
 .ldg-row .right{display:flex;align-items:center;gap:10px;}
 .ldg-row .amount{
   font-family:'IBM Plex Mono',monospace;
@@ -467,7 +469,7 @@ import {
   getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword, sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 import {
-  getFirestore, doc, getDoc, getDocs, collection, onSnapshot, setDoc, deleteDoc
+  getFirestore, doc, getDoc, getDocs, collection, query, where, onSnapshot, setDoc, deleteDoc
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -494,6 +496,7 @@ let formTipo = 'ingreso';
 let formMetodo = 'sinpe';
 let filterTab = 'todo';
 let currentUid = null;
+let currentUsername = null;
 let isAdmin = false;
 let unsubscribe = null;
 let usersList = [];
@@ -502,6 +505,12 @@ let usersListLoaded = false;
 async function resolveEmail(username){
   const snap = await getDoc(doc(db, 'usernames', username));
   return snap.exists() ? snap.data().email : null;
+}
+
+async function resolveUsername(uid){
+  const q = query(collection(db, 'usernames'), where('uid', '==', uid));
+  const snap = await getDocs(q);
+  return snap.empty ? null : snap.docs[0].id;
 }
 
 async function checkIsAdmin(uid){
@@ -624,7 +633,8 @@ function addTx(monto, nota){
     metodo: formMetodo,
     monto: monto,
     nota: nota || (formTipo==='ingreso' ? 'Ingreso' : 'Pago'),
-    fecha: today()
+    fecha: today(),
+    usuario: currentUsername || 'desconocido'
   });
   save();
   panelOpen = false;
@@ -746,6 +756,7 @@ function render(){
               <div class="meta">
                 <span>${t.fecha}</span>
                 <span class="tag ${t.metodo}">${t.metodo==='sinpe'?'SINPE':'Efectivo'}</span>
+                ${t.usuario ? `<span class="user">${escapeHtml(t.usuario)}</span>` : ''}
               </div>
             </div>
             <div class="right">
@@ -898,10 +909,12 @@ onAuthStateChanged(auth, async (user)=>{
   if(user){
     currentUid = user.uid;
     isAdmin = await checkIsAdmin(user.uid);
+    currentUsername = await resolveUsername(user.uid);
     startListening();
   }else{
     stopListening();
     currentUid = null;
+    currentUsername = null;
     isAdmin = false;
     tx = [];
     loaded = false;
