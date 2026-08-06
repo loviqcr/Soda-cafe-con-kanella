@@ -603,6 +603,19 @@ function fmt(n){
   const digits = Math.abs(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
   return (num < 0 ? '-₡' : '₡') + digits;
 }
+
+function formatMontoInput(el){
+  const digitsBefore = el.value.slice(0, el.selectionStart).replace(/\D/g, '').length;
+  const rawDigits = el.value.replace(/\D/g, '').slice(0, 12);
+  el.value = rawDigits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  let seen = 0, caret = el.value.length;
+  for(let i=0; i<el.value.length; i++){
+    if(/\d/.test(el.value[i])) seen++;
+    if(seen === digitsBefore){ caret = i+1; break; }
+  }
+  if(digitsBefore === 0) caret = 0;
+  el.setSelectionRange(caret, caret);
+}
 const today = () => new Date().toISOString().slice(0,10);
 
 function escapeHtml(s){
@@ -781,7 +794,7 @@ function render(){
         </div>
         <div class="ldg-field">
           <label>Monto (₡)</label>
-          <input type="number" id="montoInput" inputmode="numeric" placeholder="0" min="0" step="1">
+          <input type="text" id="montoInput" inputmode="numeric" placeholder="0">
         </div>
         <div class="ldg-field">
           <label>Nota (opcional)</label>
@@ -856,10 +869,12 @@ function render(){
     root.querySelectorAll('[data-metodo]').forEach(btn=>{
       btn.onclick = ()=>{ formMetodo = btn.dataset.metodo; render(); };
     });
+    const montoInputEl = document.getElementById('montoInput');
+    montoInputEl.oninput = ()=> formatMontoInput(montoInputEl);
     document.getElementById('saveBtn').onclick = ()=>{
       const montoEl = document.getElementById('montoInput');
       const notaEl = document.getElementById('notaInput');
-      const monto = parseFloat(montoEl.value);
+      const monto = parseFloat(montoEl.value.replace(/\./g, ''));
       if(!monto || monto<=0){
         montoEl.focus();
         montoEl.style.outline = '2px solid var(--negative)';
