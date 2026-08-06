@@ -478,7 +478,7 @@ import {
   getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword, sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 import {
-  getFirestore, doc, getDoc, getDocs, collection, query, where, onSnapshot, setDoc, deleteDoc
+  getFirestore, doc, getDoc, getDocs, collection, query, where, orderBy, onSnapshot, setDoc, deleteDoc, deleteField
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -494,6 +494,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const libretaRef = doc(db, 'libreta', 'principal');
+const movimientosRef = collection(db, 'libreta', 'principal', 'movimientos');
 
 const root = document.getElementById('root');
 let tx = [];
@@ -619,12 +620,29 @@ function brandHtml(subtitle){
   `;
 }
 
+async function migrateLegacyIfNeeded(){
+  try{
+    const snap = await getDoc(libretaRef);
+    const legacy = snap.exists() && Array.isArray(snap.data().transacciones) ? snap.data().transacciones : [];
+    if(legacy.length === 0) return;
+    await Promise.all(legacy.map((t, i) => setDoc(doc(movimientosRef, t.id), {
+      tipo: t.tipo, metodo: t.metodo, monto: t.monto, nota: t.nota, fecha: t.fecha,
+      usuario: t.usuario || 'desconocido', orden: legacy.length - i
+    })));
+    await setDoc(libretaRef, { transacciones: deleteField() }, { merge: true });
+  }catch(e){
+    console.error('No se pudo migrar la libreta antigua', e);
+  }
+}
+
 function startListening(){
   tx = [];
   loaded = false;
   render();
-  unsubscribe = onSnapshot(libretaRef, (snap)=>{
-    tx = snap.exists() && Array.isArray(snap.data().transacciones) ? snap.data().transacciones : [];
+  migrateLegacyIfNeeded();
+  const q = query(movimientosRef, orderBy('orden', 'desc'));
+  unsubscribe = onSnapshot(q, (snap)=>{
+    tx = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     loaded = true;
     render();
   }, (e)=>{
@@ -634,14 +652,6 @@ function startListening(){
 
 function stopListening(){
   if(unsubscribe){ unsubscribe(); unsubscribe = null; }
-}
-
-async function save(){
-  try{
-    await setDoc(libretaRef, { transacciones: tx }, { merge: true });
-  }catch(e){
-    console.error('No se pudo guardar', e);
-  }
 }
 
 function balances(){
@@ -654,25 +664,31 @@ function balances(){
   return {sinpe, efectivo, total: sinpe+efectivo};
 }
 
-function addTx(monto, nota){
-  tx.unshift({
-    id: Date.now().toString(36)+Math.random().toString(36).slice(2,6),
-    tipo: formTipo,
-    metodo: formMetodo,
-    monto: monto,
-    nota: nota || (formTipo==='ingreso' ? 'Ingreso' : 'Pago'),
-    fecha: today(),
-    usuario: currentUsername || 'desconocido'
-  });
-  save();
+async function addTx(monto, nota){
+  const id = Date.now().toString(36)+Math.random().toString(36).slice(2,6);
   panelOpen = false;
   render();
+  try{
+    await setDoc(doc(movimientosRef, id), {
+      tipo: formTipo,
+      metodo: formMetodo,
+      monto: monto,
+      nota: nota || (formTipo==='ingreso' ? 'Ingreso' : 'Pago'),
+      fecha: today(),
+      usuario: currentUsername || 'desconocido',
+      orden: Date.now()
+    });
+  }catch(e){
+    console.error('No se pudo guardar el movimiento', e);
+  }
 }
 
-function delTx(id){
-  tx = tx.filter(t=>t.id!==id);
-  save();
-  render();
+async function delTx(id){
+  try{
+    await deleteDoc(doc(movimientosRef, id));
+  }catch(e){
+    console.error('No se pudo eliminar el movimiento', e);
+  }
 }
 
 function render(){
