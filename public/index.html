@@ -598,7 +598,11 @@ async function createUser(username, email, password, makeAdmin){
   render();
 }
 
-const fmt = (n) => '₡' + Number(n).toLocaleString('es-CR', {maximumFractionDigits:0});
+function fmt(n){
+  const num = Math.round(Number(n) || 0);
+  const digits = Math.abs(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return (num < 0 ? '-₡' : '₡') + digits;
+}
 const today = () => new Date().toISOString().slice(0,10);
 
 function escapeHtml(s){
