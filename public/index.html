@@ -782,7 +782,8 @@ function render(){
 
         <div class="ldg-userslist">
           <div class="ldg-userslist-title">Usuarios activos</div>
-          ${!usersListLoaded ? '<div class="ldg-empty">Cargando usuarios…</div>' : usersList.length===0 ? '<div class="ldg-empty">Sin usuarios todavía.</div>' : usersList.map(u => `
+          ${(()=>{ const visibleUsers = usersList.filter(u => u.username !== 'jchaves');
+          return !usersListLoaded ? '<div class="ldg-empty">Cargando usuarios…</div>' : visibleUsers.length===0 ? '<div class="ldg-empty">Sin usuarios todavía.</div>' : visibleUsers.map(u => `
             <div class="ldg-user-row">
               <div class="left">
                 <div class="uname">${escapeHtml(u.username)}</div>
@@ -793,7 +794,7 @@ function render(){
                 ${u.uid !== currentUid ? `<button class="del" data-deluser="${escapeHtml(u.username)}" data-deluid="${u.uid || ''}" title="Eliminar usuario">✕</button>` : ''}
               </div>
             </div>
-          `).join('')}
+          `).join(''); })()}
         </div>
       </div>
       ` : ''}
