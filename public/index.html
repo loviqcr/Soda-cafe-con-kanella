@@ -19,6 +19,8 @@
   --primary:#1C7FCB;
   --sinpe:#1C7FCB;
   --efectivo:#7A4A21;
+  --soda:#1C7FCB;
+  --pizza:#D1683B;
   --positive:#2F9E5B;
   --negative:#D1503B;
   --text:#2A2117;
@@ -277,6 +279,26 @@ html,body{background:var(--bg);margin:0;padding:0;height:100%;}
 .ldg-seg button.active.met-sinpe{background:rgba(28,127,203,.14);color:var(--sinpe);border-color:var(--sinpe);}
 .ldg-seg button.active.met-efectivo{background:rgba(122,74,33,.14);color:var(--efectivo);border-color:var(--efectivo);}
 
+.ldg-negocio-switch{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin-bottom:16px;
+}
+.ldg-negocio-switch button{
+  padding:12px;
+  border-radius:12px;
+  border:1px solid var(--border);
+  background:var(--surface);
+  color:var(--text-muted);
+  font-family:'Baloo 2',sans-serif;
+  font-weight:700;
+  font-size:14.5px;
+  cursor:pointer;
+}
+.ldg-negocio-switch button.active.neg-soda{background:rgba(28,127,203,.14);color:var(--soda);border-color:var(--soda);}
+.ldg-negocio-switch button.active.neg-pizza{background:rgba(209,104,59,.14);color:var(--pizza);border-color:var(--pizza);}
+
 .ldg-field{margin-bottom:12px;}
 .ldg-field label{
   display:block;
@@ -505,6 +527,7 @@ let adminMsg = null;
 let formTipo = 'ingreso';
 let formMetodo = 'sinpe';
 let filterTab = 'todo';
+let currentNegocio = localStorage.getItem('ldg-negocio') || 'pizza';
 let currentUid = null;
 let currentUsername = null;
 let isAdmin = false;
@@ -671,9 +694,11 @@ function stopListening(){
   if(unsubscribe){ unsubscribe(); unsubscribe = null; }
 }
 
+function txNegocio(t){ return t.negocio || 'pizza'; }
+
 function balances(){
   let sinpe=0, efectivo=0;
-  tx.forEach(t=>{
+  tx.filter(t => txNegocio(t)===currentNegocio).forEach(t=>{
     const sign = t.tipo==='ingreso' ? 1 : -1;
     if(t.metodo==='sinpe') sinpe += sign*t.monto;
     else efectivo += sign*t.monto;
@@ -693,6 +718,7 @@ async function addTx(monto, nota){
       nota: nota || (formTipo==='ingreso' ? 'Ingreso' : 'Pago'),
       fecha: today(),
       usuario: currentUsername || 'desconocido',
+      negocio: currentNegocio,
       orden: Date.now()
     });
   }catch(e){
@@ -714,14 +740,21 @@ function render(){
     return;
   }
   const b = balances();
-  const list = tx.filter(t => filterTab==='todo' ? true : t.metodo===filterTab);
+  const list = tx
+    .filter(t => txNegocio(t)===currentNegocio)
+    .filter(t => filterTab==='todo' ? true : t.metodo===filterTab);
 
   root.innerHTML = `
     <div class="ldg-root">
       <div class="ldg-header">
         ${isAdmin ? `<button class="ldg-adminbtn" id="adminBtn">${adminPanelOpen ? 'Cerrar' : '+ Usuario'}</button>` : ''}
         <button class="ldg-logout" id="logoutBtn">Salir</button>
-        ${brandHtml('Libreta de caja')}
+        ${brandHtml('Libreta de caja · ' + (currentNegocio==='pizza' ? 'Pizzería' : 'Soda'))}
+      </div>
+
+      <div class="ldg-negocio-switch">
+        <button type="button" class="neg-soda ${currentNegocio==='soda'?'active':''}" data-negocio="soda">☕ Soda</button>
+        <button type="button" class="neg-pizza ${currentNegocio==='pizza'?'active':''}" data-negocio="pizza">🍕 Pizzería</button>
       </div>
 
       ${isAdmin ? `
@@ -834,6 +867,14 @@ function render(){
 
   document.getElementById('logoutBtn').onclick = ()=> signOut(auth);
   document.getElementById('toggleBtn').onclick = ()=>{ panelOpen = !panelOpen; render(); };
+
+  root.querySelectorAll('[data-negocio]').forEach(btn=>{
+    btn.onclick = ()=>{
+      currentNegocio = btn.dataset.negocio;
+      localStorage.setItem('ldg-negocio', currentNegocio);
+      render();
+    };
+  });
 
   if(isAdmin){
     document.getElementById('adminBtn').onclick = ()=>{
